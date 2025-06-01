@@ -160,7 +160,7 @@ jreleaser {
                     snapshotUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots'
                     closeRepository = true
                     releaseRepository = false
-                    stagingRepository('build/staging-deploy')
+                    stagingRepository = layout.buildDirectory.dir('staging-deploy').get().asFile.absolutePath
                 }
             }
         }
@@ -168,6 +168,6 @@ jreleaser {
 }
 
 wrapper {
-    gradleVersion = '8.5'
+    gradleVersion = '8.13'
     distributionType = Wrapper.DistributionType.ALL
 }
