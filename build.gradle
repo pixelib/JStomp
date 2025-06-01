@@ -1,11 +1,11 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
-    id 'signing'
     id 'jacoco'
+    id 'org.jreleaser' version '1.18.0'
 }
 
-group = 'com.github.duckelekuuk'
+group = 'dev.pixelib'
 version = '1.0.0-SNAPSHOT'
 description = 'A STOMP client library built on top of OkHTTP'
 
@@ -104,28 +104,62 @@ publishing {
             from components.java
             
             pom {
-                name = project.name
+                name = 'JStomp'
                 description = project.description
-                url = 'https://github.com/duckelekuuk/JStomp'
+                url = 'https://github.com/pixelib/JStomp'
+                inceptionYear = '2025'
                 
                 licenses {
                     license {
-                        name = 'The Apache License, Version 2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        name = 'Apache-2.0'
+                        url = 'https://spdx.org/licenses/Apache-2.0.html'
                     }
                 }
                 
                 developers {
                     developer {
                         id = 'duckelekuuk'
-                        name = 'duckelekuuk'
+                        name = 'Duco'
+                        url = 'https://github.com/duckelekuuk'
+                    }
+                    developer {
+                        id = 'mindgamesnl'
+                        name = 'Mats'
+                        url = 'https://github.com/Mindgamesnl'
                     }
                 }
                 
                 scm {
-                    connection = 'scm:git:git://github.com/duckelekuuk/JStomp.git'
-                    developerConnection = 'scm:git:ssh://github.com:duckelekuuk/JStomp.git'
-                    url = 'https://github.com/duckelekuuk/JStomp'
+                    connection = 'scm:git:https://github.com/pixelib/JStomp.git'
+                    developerConnection = 'scm:git:ssh://github.com/pixelib/JStomp.git'
+                    url = 'https://github.com/pixelib/JStomp'
+                }
+            }
+        }
+    }
+    
+    repositories {
+        maven {
+            url = layout.buildDirectory.dir('staging-deploy')
+        }
+    }
+}
+
+jreleaser {
+    signing {
+        active = 'ALWAYS'
+        armored = true
+    }
+    deploy {
+        maven {
+            nexus2 {
+                'maven-central' {
+                    active = 'ALWAYS'
+                    url = 'https://s01.oss.sonatype.org/service/local'
+                    snapshotUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots'
+                    closeRepository = true
+                    releaseRepository = false
+                    stagingRepository('target/staging-deploy')
                 }
             }
         }
