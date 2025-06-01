@@ -149,7 +149,6 @@ jreleaser {
     signing {
         active = 'ALWAYS'
         armored = true
-        verify = false
     }
     deploy {
         maven {
