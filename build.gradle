@@ -160,7 +160,7 @@ jreleaser {
                     snapshotUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots'
                     closeRepository = true
                     releaseRepository = false
-                    stagingRepository = layout.buildDirectory.dir('staging-deploy').get().asFile.absolutePath
+                    stagingRepository(layout.buildDirectory.dir('staging-deploy').get().asFile.absolutePath)
                 }
             }
         }
