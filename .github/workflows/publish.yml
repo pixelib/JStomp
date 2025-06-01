@@ -25,8 +25,11 @@ jobs:
     
     - name: Build and Test
       run: ./gradlew -Pversion=${{ github.event.release.tag_name }} build
-    
-    - name: Publish to Maven Central
+
+    - name: Publish to Staging Repository
+      run: ./gradlew -Pversion=${{ github.event.release.tag_name }} publish
+
+    - name: Deploy to Maven Central
       env:
         JRELEASER_NEXUS2_USERNAME: ${{ secrets.OSSRH_USERNAME }}
         JRELEASER_NEXUS2_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
