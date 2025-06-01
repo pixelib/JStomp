@@ -160,7 +160,7 @@ jreleaser {
                     snapshotUrl = 'https://s01.oss.sonatype.org/content/repositories/snapshots'
                     closeRepository = true
                     releaseRepository = false
-                    stagingRepository('target/staging-deploy')
+                    stagingRepository('build/staging-deploy')
                 }
             }
         }
