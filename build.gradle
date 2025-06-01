@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'dev.pixelib'
-version = '0.0.0-LOCALBUILD-SNAPSHOT'
+version = project.hasProperty('version') ? project.property('version') : '0.0.0-LOCALBUILD-SNAPSHOT'
 description = 'A STOMP client library built on top of OkHTTP'
 
 java {
