@@ -25,6 +25,9 @@ dependencies {
     // OkHTTP for WebSocket support
     api 'com.squareup.okhttp3:okhttp:4.12.0'
     
+    // JSON support
+    api 'com.google.code.gson:gson:2.10.1'
+    
     // Logging
     implementation 'org.slf4j:slf4j-api:2.0.9'
     

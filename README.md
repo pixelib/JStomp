@@ -8,6 +8,7 @@ A Java STOMP (Simple Text Oriented Messaging Protocol) client library built on t
 - Support for STOMP 1.2 protocol
 - Asynchronous connection handling with CompletableFuture
 - Message subscription and publishing
+- JSON serialization/deserialization with GSON support
 - Connection state management
 - Proper header escaping according to STOMP specification
 - Comprehensive test coverage
@@ -93,6 +94,94 @@ OkHttpClient customHttpClient = new OkHttpClient.Builder()
 StompClient client = new StompClient(customHttpClient, URI.create("ws://localhost:61614/stomp"));
 ```
 
+### JSON Messaging with GSON
+
+JStomp includes built-in support for JSON serialization and deserialization using GSON:
+
+```java
+import dev.pixelib.jstomp.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
+import okhttp3.OkHttpClient;
+import java.lang.reflect.Type;
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+
+// Example data class
+public class Message {
+    private String text;
+    private String sender;
+    private long timestamp;
+    
+    // constructors, getters, setters...
+}
+
+// Create client with default GSON
+StompClient client = new StompClient(URI.create("ws://localhost:61614/stomp"));
+
+// Or with custom GSON configuration
+Gson customGson = new GsonBuilder()
+    .setDateFormat("yyyy-MM-dd HH:mm:ss")
+    .create();
+StompClient clientWithCustomGson = new StompClient(
+    new OkHttpClient(), 
+    URI.create("ws://localhost:61614/stomp"), 
+    customGson
+);
+
+client.connect().join();
+
+// Subscribe to JSON messages
+String subscriptionId = client.subscribeJson("/topic/messages", Message.class, jsonMessage -> {
+    Message msg = jsonMessage.getData();
+    System.out.println("Received message: " + msg.getText());
+    System.out.println("From: " + msg.getSender());
+    System.out.println("Timestamp: " + msg.getTimestamp());
+    
+    // Access original STOMP headers
+    Map<String, String> headers = jsonMessage.getHeaders();
+    System.out.println("Message ID: " + headers.get("message-id"));
+});
+
+// Send JSON message
+Message message = new Message("Hello JSON!", "user123", System.currentTimeMillis());
+client.sendJson("/topic/messages", message);
+
+// Send JSON with custom headers
+Map<String, String> headers = Map.of(
+    "priority", "high",
+    "content-type", "application/json"
+);
+client.sendJson("/topic/messages", message, headers);
+
+// Subscribe to generic types (e.g., List<Message>)
+Type listType = new TypeToken<List<Message>>(){}.getType();
+client.subscribeJson("/topic/bulk-messages", listType, jsonMessage -> {
+    List<Message> messages = jsonMessage.getData();
+    System.out.println("Received " + messages.size() + " messages");
+});
+
+client.unsubscribe(subscriptionId);
+client.disconnect();
+```
+
+### JSON Error Handling
+
+```java
+// JSON operations can throw StompJsonException for serialization/deserialization errors
+try {
+    client.subscribeJson("/topic/messages", Message.class, jsonMessage -> {
+        // Handle message
+    });
+} catch (StompJsonException e) {
+    System.err.println("JSON error: " + e.getMessage());
+    System.err.println("Original message: " + e.getOriginalMessage());
+    System.err.println("Target type: " + e.getTargetType());
+}
+```
+
 ## Building
 
 To build the project:
@@ -117,6 +206,7 @@ To generate Javadocs:
 
 - **OkHTTP 4.12.0** - For WebSocket communication
 - **SLF4J 2.0.9** - For logging
+- **GSON 2.10.1** - For JSON serialization/deserialization
 - **JUnit 5** - For testing
 - **Mockito** - For mocking in tests
 - **AssertJ** - For fluent assertions in tests

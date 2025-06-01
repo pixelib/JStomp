@@ -1,9 +1,12 @@
 package dev.pixelib.jstomp;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +30,7 @@ public class StompClient {
     private final Map<String, StompSubscription> subscriptions;
     private final AtomicLong messageIdCounter;
     private final AtomicBoolean connected;
+    private final Gson gson;
     
     private WebSocket webSocket;
     private StompConnectionListener connectionListener;
@@ -47,12 +51,24 @@ public class StompClient {
      * @param serverUri the WebSocket URI to connect to
      */
     public StompClient(OkHttpClient httpClient, URI serverUri) {
+        this(httpClient, serverUri, new GsonBuilder().create());
+    }
+    
+    /**
+     * Creates a new STOMP client with a custom OkHTTP client and Gson instance.
+     * 
+     * @param httpClient the OkHTTP client to use
+     * @param serverUri the WebSocket URI to connect to
+     * @param gson the Gson instance to use for JSON serialization/deserialization
+     */
+    public StompClient(OkHttpClient httpClient, URI serverUri, Gson gson) {
         this.httpClient = httpClient;
         this.serverUri = serverUri;
         this.headers = new ConcurrentHashMap<>();
         this.subscriptions = new ConcurrentHashMap<>();
         this.messageIdCounter = new AtomicLong(0);
         this.connected = new AtomicBoolean(false);
+        this.gson = gson;
     }
     
     /**
@@ -134,6 +150,46 @@ public class StompClient {
     }
     
     /**
+     * Sends a JSON object to the specified destination.
+     * The object will be serialized to JSON using the configured Gson instance.
+     * 
+     * @param destination the destination to send to
+     * @param object the object to serialize and send
+     * @throws StompJsonException if JSON serialization fails
+     */
+    public void sendJson(String destination, Object object) throws StompJsonException {
+        sendJson(destination, object, Map.of());
+    }
+    
+    /**
+     * Sends a JSON object to the specified destination with custom headers.
+     * The object will be serialized to JSON using the configured Gson instance.
+     * The content-type header will be automatically set to "application/json" if not provided.
+     * 
+     * @param destination the destination to send to
+     * @param object the object to serialize and send
+     * @param headers additional headers
+     * @throws StompJsonException if JSON serialization fails
+     */
+    public void sendJson(String destination, Object object, Map<String, String> headers) throws StompJsonException {
+        if (!connected.get()) {
+            throw new IllegalStateException("Not connected to server");
+        }
+        
+        try {
+            String jsonString = gson.toJson(object);
+            
+            // Create a copy of headers and add content-type if not present
+            Map<String, String> jsonHeaders = new ConcurrentHashMap<>(headers);
+            jsonHeaders.putIfAbsent("content-type", "application/json");
+            
+            send(destination, jsonString, jsonHeaders);
+        } catch (Exception e) {
+            throw new StompJsonException("Failed to serialize object to JSON", e);
+        }
+    }
+    
+    /**
      * Subscribes to a destination.
      * 
      * @param destination the destination to subscribe to
@@ -157,6 +213,53 @@ public class StompClient {
         sendFrame(frame);
         
         return subscriptionId;
+    }
+    
+    /**
+     * Subscribes to a destination with automatic JSON deserialization.
+     * Messages received on this subscription will be automatically deserialized to the specified type.
+     * 
+     * @param <T> the type to deserialize JSON messages to
+     * @param destination the destination to subscribe to
+     * @param clazz the class type to deserialize to
+     * @param jsonMessageHandler the JSON message handler
+     * @return the subscription ID
+     */
+    public <T> String subscribeJson(String destination, Class<T> clazz, StompJsonMessageHandler<T> jsonMessageHandler) {
+        return subscribeJson(destination, (Type) clazz, jsonMessageHandler);
+    }
+    
+    /**
+     * Subscribes to a destination with automatic JSON deserialization using a Type.
+     * This method is useful for generic types like List&lt;MyClass&gt;.
+     * Messages received on this subscription will be automatically deserialized to the specified type.
+     * 
+     * @param <T> the type to deserialize JSON messages to
+     * @param destination the destination to subscribe to
+     * @param type the Type to deserialize to (useful for generics)
+     * @param jsonMessageHandler the JSON message handler
+     * @return the subscription ID
+     */
+    public <T> String subscribeJson(String destination, Type type, StompJsonMessageHandler<T> jsonMessageHandler) {
+        // Create a wrapper StompMessageHandler that handles JSON deserialization
+        StompMessageHandler wrapper = message -> {
+            try {
+                T jsonObject = gson.fromJson(message.getBody(), type);
+                StompJsonMessage<T> jsonMessage = new StompJsonMessage<>(message, jsonObject);
+                jsonMessageHandler.onJsonMessage(destination, jsonObject, jsonMessage);
+            } catch (Exception e) {
+                try {
+                    jsonMessageHandler.onJsonMessage(destination, null, new StompJsonMessage<>(message, null));
+                } catch (StompJsonException jsonEx) {
+                    logger.error("Error in JSON message handler", jsonEx);
+                    if (connectionListener != null) {
+                        connectionListener.onError(new StompJsonException("Failed to deserialize JSON message", e));
+                    }
+                }
+            }
+        };
+        
+        return subscribe(destination, wrapper);
     }
     
     /**
