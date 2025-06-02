@@ -1,3 +1,6 @@
+<p align="center">
+<img src="https://github.com/user-attachments/assets/a99fb914-ec19-46c0-a530-701da168578d" />
+</p>
 # JStomp
 
 A Java STOMP (Simple Text Oriented Messaging Protocol) client library built on top of OkHTTP WebSocket. This library provides a simple and efficient way to connect to STOMP-enabled message brokers like ActiveMQ, RabbitMQ, and others.
